@@ -40,3 +40,7 @@ to_top_n(article_scores, n=50)
 show_best_articles(all_articles, petitions, article_scores, petition_number=10)
 
 show_best_articles(all_articles, petitions, article_scores, petition_number=100)
+
+petition_counts = load_petition_counts()
+
+all_clean_blobs = get_all_json(all_articles, petitions, article_scores, petition_counts)

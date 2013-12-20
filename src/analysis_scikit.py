@@ -3,6 +3,7 @@ import config
 import util
 import os
 import pandas as pd
+from dateutil import parser
 
 
 def to_top_n(csr_matrix, n=10):
@@ -72,17 +73,16 @@ def get_reporting_json(article_data, petition_data, article_scores,
     to_return = {}
     petition = petition_data.ix[petition_number]
     petition_key = petition['id']
-#    to_return['petition_key'] = petition_key
     to_return['petition_title'] = petition['title']
     to_return['petition_text'] = petition['body']
     to_return['petition_url'] = petition['url']
     to_return['petition_date'] = petition['created']
+    to_return['petition_close'] = petition['closed'] or None
 
     date_counts = petition_counts[petition_counts.petition_id == petition_key][['day', 'number']]
 
-    to_return['date_counts'] = [{'date': r[1]['day'], 'count': r[1]['number']}
+    to_return['signature_counts'] = [{'date': r[1]['day'], 'count': r[1]['number']}
                                  for r in date_counts.iterrows()]
-
 
     article_list = []
     to_return['articles'] = article_list
@@ -97,5 +97,42 @@ def get_reporting_json(article_data, petition_data, article_scores,
                 'date': article['date'],
                 'teaser': article['teaser'],
                 'link': get_short_link(article['links'])})
+
+    return to_return
+
+def trim_text(t, length):
+    if len(t) > length + 3:
+        return t[:length] + '...'
+    else:
+        return t
+
+def get_all_json(article_data, petition_data, article_scores,
+                 petition_counts, petition_number=None, article_score_lower_bound=.145,
+                 before_days=60, after_days=100, min_articles=5, trim_it=True):
+
+    to_return = []
+    for i in range(len(petition_data)):
+        blob = get_reporting_json(article_data, petition_data, article_scores,
+                                  petition_counts,
+                                  petition_number=i,
+                                  article_score_lower_bound=article_score_lower_bound)
+        parsed_petition_date = parser.parse(blob['petition_date'])
+
+        new_articles = []
+        for a in blob['articles']:
+            # Hack to remove timezone, but fine for our needs...
+            article_date = parser.parse(a['date']).replace(tzinfo=None)
+            days_diff = (parsed_petition_date - article_date).days
+            if -before_days < days_diff < after_days:
+                new_articles.append(a)
+                a['date'] = article_date.strftime('%Y-%m-%d')
+                if trim_it:
+                    a['teaser'] = trim_text(a['teaser'], 150)
+
+        if len(new_articles) >= min_articles:
+            blob['articles'] = new_articles
+            to_return.append(blob)
+        if trim_it:
+            blob['petition_text'] = trim_text(blob['petition_text'], 150)
 
     return to_return
