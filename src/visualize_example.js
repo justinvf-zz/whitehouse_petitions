@@ -1,5 +1,5 @@
 var w = 1000,
-    h = 500,
+    h = 400,
     margin = 40;
 var dataPath = "sequestration.json";
 
@@ -39,7 +39,6 @@ function updatePetition(data) {
 }
 
 
-
 function getWeekStart(d, dayOfWeek) {
     // Get the given day of the week in d's week.
     // BS function but I really don't want a whole js library
@@ -53,6 +52,7 @@ function getWeekStart(d, dayOfWeek) {
     return toReturn;
 }
 
+
 function ready(error, data) {
     allDates = getDates(data['articles']).concat(getDates(data['signature_counts']));
     articles = data['articles']
@@ -65,7 +65,7 @@ function ready(error, data) {
     if (data['petition_close']) {
 	allDates.push(new Date(data['petition_close']));
     }
-    
+
     var cirlesPerWeek = {};
 
     var dateRange = d3.extent(allDates);
@@ -100,42 +100,56 @@ function ready(error, data) {
 
     yTop = d3.scale.linear()
 	.domain([0, maxSigs])
-	.rangeRound([h/2, margin]);
+	.rangeRound([3 * h/4, margin]);
 
     yTopAxis = d3.svg.axis().scale(yTop).orient("right");
 
     yBottom = d3.scale.linear()
 	.domain([0, d3.max(weeklyCounts.values()) + 1])
-	.range([h/2,  h - margin]);
+	.range([3 * h/4,  h - margin]);
 
     svg = d3.select("#timeline").append("svg")
 	.attr("width", w)
 	.attr("height", h);
+
+    svg.append("text")
+	.attr("class", "y label")
+	.attr("text-anchor", "end")
+	.attr("y", h/30)
+	.attr("x", -50)
+	.attr("dy", ".75em")
+	.attr("transform", "rotate(-90)")
+	.text("Petitions signed per day");
 
     svg.append('g')
 	.attr('class', 'x axis')
 	.attr('transform', 'translate(0, ' + margin + ')')
 	.call(xAxis);
 
-    svg.append("g").attr("class", "y axis").call(yTopAxis);
-
+    svg.append("g")
+	.attr("class", "y axis")
+	.attr("transform", "translate(30,0)")
+	.call(yTopAxis);
 
     svg.selectAll('rectangle').data(data['signature_counts']).enter()
 	.append('rect')
 	.attr('x', function(d) {return x(d.date)})
 	.attr('y', function(d) {return yTop(d.count)})
 	.attr('width', 4)
-	.attr('height', function(d) {return h/2 - yTop(d.count)})
+	.attr('height', function(d) {return 3 * h/4 - yTop(d.count)})
 	.append("svg:title")
 	.text(function(d) { return d.date.getMonth() + '/' + d.date.getDate() + ': ' + d.count });
+
+    function getActive(article) { return article.active; };
 
     svg.selectAll('circle').data(data['articles']).enter()
 	.append('circle')
 	.attr('cx', function(d) {return x(getWeekStart(d.date, 3)); })
 	.attr('cy', function(d) {return yBottom(d.week_index) + margin/3; })
-	.attr('r', 12)
+	.attr('r', 6)
+	.classed('active', getActive)
 	.on('mouseover', function(d) {
 	    updateArticle(d);
-	    d3.selectAll('circle').classed('active', function(d) {return d.active;});
+	    d3.selectAll('circle').classed('active', getActive);
 	});
 }

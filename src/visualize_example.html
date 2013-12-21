@@ -2,69 +2,34 @@
 <html>
   <head>
     <meta charset="utf-8">
-
-    <style>
-  .chart {
-    font-family: Arial, sans-serif;
-    font-size: 10px;
-  }
-
-  .axis path {
-    fill: none;
-    stroke: #000;
-    shape-rendering: crispEdges;
-  }
-
-  .axis line {
-    stroke: #000;
-  stroke-width: 3;
-    shape-rendering: crispEdges;
-  }
-
-  .bar {
-    fill: steelblue;
-  }
-
-  rect {
-  fill: green;
-  opacity: .5;
-  }
-
-  rect:hover {
-  opacity: .8
-  }
-
-  circle {
-    stroke: red;
-    fill: orange;
-    opacity: .7;
-  }
-
-  circle.active {
-    stroke: red;
-    fill: red;
-    opacity: .8;
-  }
-
-</style>
-
+    <link rel="stylesheet" href="visualize_example.css">
   </head>
 
+  <title>News and Petitions</title>
+
   <body>
-	  <h1 id="petition_title">
-	    <a id="petition_url" href="#">A Petition</a>
-	  </h1>
-	  <p id="petition_text">Petition Blurb</p>
 
-    <div id="timeline"></div>
+    <div id="timeline">
+    </div>
 
-	  <h1 id="article_headline">
-	    <a id="article_url" href="#">An article</a>
-	  </h1>
-	  <p id="article_text">Article Blurb</p>
+    <div id="outer_text">
+      <div id="petition">
+	<h2 id="petition_title">
+	  <a id="petition_url" href="#">A Petition</a>
+	</h2>
+	<p id="petition_text">Petition Blurb</p>
+      </div>
+
+      <div id="article">
+	<h2 id="article_headline">
+	  <a id="article_url" href="#">An article</a>
+	</h2>
+	<p id="article_text">Article Blurb</p>
+      </div>
+    </div>
+
   </body>
 
   <script src="http://d3js.org/d3.v3.min.js"></script>
   <script src="visualize_example.js"></script>
-
 </html>
