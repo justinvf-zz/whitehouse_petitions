@@ -1,1 +1,3 @@
 extra_config.py
+src/blobs/*json
+*~

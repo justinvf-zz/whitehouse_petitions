@@ -54,6 +54,10 @@ petition_counts = load_petition_counts()
 all_clean_blobs = get_all_json(all_articles, petitions, article_scores, petition_counts)
 
 # Restrict to 2013 blobs with a decent amount of articles
+blob_paths = []
+
+URL_OUTPUT_PATH = '/post-files/20140101-whitehouse-petitions/blobs'
+
 i = 0
 for b in all_clean_blobs:
     if b['petition_date'].startswith('2013'):
@@ -61,5 +65,10 @@ for b in all_clean_blobs:
             b['petition_close'] = None
         b['articles'] = [a for a in b['articles'] if a['date'].startswith('2013')]
         if len(b['articles']) >= MIN_ARTICLES:
-            save_to_disk('blobs/blob-{}.json'.format(i), b, compress=False)
+            filename = 'blob-{}.json'.format(i)
+            save_to_disk('blobs/' + filename, b, compress=False)
+            blob_paths.append({'fragment': str(abs(hash(b['petition_title']))),
+                               'url': '{}/{}'.format(URL_OUTPUT_PATH, filename)})
             i += 1
+
+save_to_disk('blobs/all_petitions.json', blob_paths, compress=False)
