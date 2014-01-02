@@ -96,7 +96,7 @@ def articles_for_date(date):
 
 
 def article_filename(date, data_dir=NPR_DATA_DIR):
-    filename = '{:%Y-%m-%d.gz}'.format(date)
+    filename = '{:%Y-%m-%d}.gz'.format(date)
     return os.path.join(data_dir, filename)
 
 
@@ -107,9 +107,6 @@ def crawl_all_articles(num_days, start_date):
         filename = article_filename(article_date)
         save_to_disk(filename, articles_for_date(article_date))
 
-
-def article_to_text(article):
-    return ' '.join(p for p in article['paragraphs'])
 
 if __name__ == '__main__':
     op = OptionParser()   
