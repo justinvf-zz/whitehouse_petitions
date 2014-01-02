@@ -2,6 +2,7 @@ from heapq import nlargest
 import config
 import util
 import os
+from glob import glob
 import pandas as pd
 from dateutil import parser
 
@@ -25,7 +26,7 @@ def load_all_articles():
     all_blob_path = os.path.join(config.NPR_DATA_DIR, 'all_articles.gz')
     if not os.path.exists(all_blob_path):
         all_blobs = []
-        for filename in os.glob(os.path.join(config.NPR_DATA_DIR, '*gz')):
+        for filename in glob(os.path.join(config.NPR_DATA_DIR, '*gz')):
             all_blobs.extend(util.load_from_disk(filename))
         util.save_to_disk(all_blob_path, all_blobs)
     else:
@@ -100,15 +101,9 @@ def get_reporting_json(article_data, petition_data, article_scores,
 
     return to_return
 
-def trim_text(t, length):
-    if len(t) > length + 3:
-        return t[:length] + '...'
-    else:
-        return t
-
 def get_all_json(article_data, petition_data, article_scores,
                  petition_counts, petition_number=None, article_score_lower_bound=.145,
-                 before_days=60, after_days=100, min_articles=5, trim_it=True):
+                 before_days=60, after_days=100, min_articles=5, trim_it=False):
 
     to_return = []
     for i in range(len(petition_data)):

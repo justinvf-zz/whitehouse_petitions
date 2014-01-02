@@ -1,6 +1,14 @@
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from analysis_scikit import to_top_n, show_best_articles, load_petitions, load_all_articles
+from analysis_scikit import (to_top_n, show_best_articles, load_petitions,
+                             load_all_articles, load_petition_counts,
+                             get_all_json)
+
+from util import save_to_disk
+
+# Number of articles needed in order to generate a blob.
+MIN_ARTICLES = 10
 
 all_articles = load_all_articles()
 
@@ -44,3 +52,14 @@ show_best_articles(all_articles, petitions, article_scores, petition_number=100)
 petition_counts = load_petition_counts()
 
 all_clean_blobs = get_all_json(all_articles, petitions, article_scores, petition_counts)
+
+# Restrict to 2013 blobs with a decent amount of articles
+i = 0
+for b in all_clean_blobs:
+    if b['petition_date'].startswith('2013'):
+        if type(b['petition_close']) == float:
+            b['petition_close'] = None
+        b['articles'] = [a for a in b['articles'] if a['date'].startswith('2013')]
+        if len(b['articles']) >= MIN_ARTICLES:
+            save_to_disk('blobs/blob-{}.json'.format(i), b, compress=False)
+            i += 1

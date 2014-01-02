@@ -1,155 +1,214 @@
-var w = 1000,
-    h = 400,
-    margin = 40;
-var dataPath = "sequestration.json";
+if (!window.location.hash) {
+    window.location.hash = 0
+}
 
-d3.json(dataPath, ready);
+var index = +(window.location.hash.substr(1))
 
-function getDates(ar) {
+var margin = {top: 40, right: 40, bottom: 40, left: 40},
+    width = 900 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+    
+// Fraction that we break the svg's vertical layout into
+var BREAKS = 8;
+
+// Hard-coded.. Will change later.
+var NUM_BLOBS = 61;
+
+var x = d3.time.scale().rangeRound([0, width]);
+var y = d3.scale.linear().rangeRound([6 * height / BREAKS, margin.top]);
+
+function getBlobPath(i) {
+    return "blobs/blob-" + i + ".json";
+}
+
+d3.json(getBlobPath(index), ready);
+
+function switchContent(inc) {
+    index += inc;
+    index = index < 0 ? NUM_BLOBS - 1 : index % NUM_BLOBS;
+    window.location.hash = index;
+    d3.json(getBlobPath(index), ready);
+}
+
+d3.select('#leftNav').on('click', function() {
+    switchContent(-1);
+});
+
+d3.select('#rightNav').on('click', function() {
+    switchContent(1);
+});
+
+function addDates(ar) {
     ar.forEach(function(d) {
 	d.date = new Date(d.date);
     });
+}
+
+function getDates(ar) {
     return ar.map(function(d) { return d.date });
 }
 
-var activeItem;
-
-function updateArticle(article) {
-    if (activeItem) {
-	activeItem.active = false;
-    }
-    article.active = true;
-    activeItem = article;
-
-    d3.select('#article_url')
-	.text(article['title'])
-	.attr('href', article['link']);
-
-    d3.select("#article_text")
-	.text(article['teaser']);
+function jiggle(x, range) {
+    return Math.round(Math.random() * range - range/2 + x);
 }
-
-function updatePetition(data) {
-    d3.select('#petition_text')
-	.text(data['petition_text']);
-
-    d3.select('#petition_url')
-	.attr('href', data['petition_url'])
-	.text(data['petition_title']);
-}
-
-
-function getWeekStart(d, dayOfWeek) {
-    // Get the given day of the week in d's week.
-    // BS function but I really don't want a whole js library
-    var toReturn = new Date(d);
-    if (toReturn.getDay() > 0) {
-	toReturn.setDate(d.getDate() - d.getDay() + dayOfWeek);
-    }
-    toReturn.setHours(0);
-    toReturn.setMinutes(0);
-    toReturn.setSeconds(0);
-    return toReturn;
-}
-
 
 function ready(error, data) {
-    allDates = getDates(data['articles']).concat(getDates(data['signature_counts']));
-    articles = data['articles']
+    d3.select('#chartContent').remove()
 
-    var activeArticle = 0;
+    var chartContent = d3.select('#chart').append('div').attr('id', 'chartContent');
+    var petitionBody = chartContent.append('div').attr('id', 'petition_data');
+    var timeline = chartContent.append('div').attr('id', 'timeline')
+    var articles = chartContent.append('div').attr('id', 'articles')
 
-    updateArticle(data['articles'][activeArticle]);
-    updatePetition(data);
+    addDates(data.articles);
+    addDates(data.signature_counts);
 
-    if (data['petition_close']) {
-	allDates.push(new Date(data['petition_close']));
-    }
+    data.articles.sort(function(a,b) { return a.date - b.date; })
+    data.signature_counts.sort(function(a,b) { return a.date - b.date; })
 
-    var cirlesPerWeek = {};
+    var allDates = getDates(data.articles).concat(getDates(data.signature_counts));
 
     var dateRange = d3.extent(allDates);
 
-    var activeBar;
+    x.domain([new Date('2013-01-01'), new Date('2014-01-01')]);
 
-    var weeklyCounts = d3.map();
-    for (var i = 0; i < articles.length; i++) {
-	startOfWeek = getWeekStart(articles[i].date, 0);
-	if (weeklyCounts.has(startOfWeek)) {
-	    articles[i]['week_index'] = weeklyCounts.get(startOfWeek) + 1;
-	} else {
-	    articles[i]['week_index'] = 0;
-	}
-	weeklyCounts.set(startOfWeek, articles[i]['week_index'])
-    }
+    var maxSigs = d3.max(data.signature_counts, function(d) { return d.count; });
+    y.domain([0, maxSigs]);
 
-    x = d3.time.scale()
-	.domain(dateRange)
-	.rangeRound([margin/2, w - margin/2]);
+
+    petitionBody
+	.append('a')
+	.attr('href', data.petition_url)
+	.append('h1')
+	.text(data.petition_title);
+
+    petitionBody
+	.append('p')
+	.text(data.petition_text);
+
+    var svg = timeline.append('svg')
+	.attr('width', width + margin.left + margin.right)
+	.attr('height', height + margin.top + margin.bottom)
+	.append('g')
+	.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+    svg.selectAll('.signatureLine')
+	.data(data.signature_counts)
+	.enter()
+	.append('line')
+	.classed('signatureLine', true)
+	.attr('x1', function(d) { return x(d.date); })
+	.attr('y1', function(d) { return y(d.count); })
+	.attr('x2', function(d) { return x(d.date); })
+	.attr('y2', function(d) { return 6 * height / BREAKS; });
+
+    svg.selectAll('.articleLine')
+	.data(data.articles)
+	.enter()
+	.append('line')
+	.classed('articleLine', true)
+	.attr('x1', function(d) { return x(d.date)})
+	.attr('x2', function(d) { return jiggle(x(d.date), 9)} )
+	.attr('y1', 7 * height / BREAKS)
+	.attr('y2', height);
 
     xAxis = d3.svg.axis()
 	.scale(x)
-	.orient('top')
-	.tickFormat(d3.time.format('%m/%d/%y'))
-	.tickSize(10)
+	.orient('bottom')
+	.tickFormat(d3.time.format('%B'))
 	.ticks(6)
 	.tickPadding(10);
 
-    var maxSigs = d3.max(data['signature_counts'],
-			 function(d) { return d['count']; });
+    yAxis = d3.svg.axis().scale(y).orient('left');
 
-    yTop = d3.scale.linear()
-	.domain([0, maxSigs])
-	.rangeRound([3 * h/4, margin]);
+    var dateFormatter = d3.time.format('%B %d');
 
-    yTopAxis = d3.svg.axis().scale(yTop).orient("right");
-
-    yBottom = d3.scale.linear()
-	.domain([0, d3.max(weeklyCounts.values()) + 1])
-	.range([3 * h/4,  h - margin]);
-
-    svg = d3.select("#timeline").append("svg")
-	.attr("width", w)
-	.attr("height", h);
-
-    svg.append("text")
-	.attr("class", "y label")
-	.attr("text-anchor", "end")
-	.attr("y", h/30)
-	.attr("x", -50)
-	.attr("dy", ".75em")
-	.attr("transform", "rotate(-90)")
-	.text("Petitions signed per day");
+    svg.append('g')
+	.attr('class', 'y axis')
+	.call(yAxis)
+	.append('text')
+	.text('Signatures per Day')
+	.attr('transform', 'translate(0,' + margin.top + ')')
+	.style('font-weight', 'bold');
 
     svg.append('g')
 	.attr('class', 'x axis')
-	.attr('transform', 'translate(0, ' + margin + ')')
+	.attr('transform', 'translate(0, ' + (6 * height / BREAKS) + ')')
 	.call(xAxis);
 
-    svg.append("g")
-	.attr("class", "y axis")
-	.attr("transform", "translate(30,0)")
-	.call(yTopAxis);
+    var numArticles = data.articles.length;
 
-    svg.selectAll('rectangle').data(data['signature_counts']).enter()
-	.append('rect')
-	.attr('x', function(d) {return x(d.date)})
-	.attr('y', function(d) {return yTop(d.count)})
-	.attr('width', 4)
-	.attr('height', function(d) {return 3 * h/4 - yTop(d.count)})
-	.append("svg:title")
-	.text(function(d) { return d.date.getMonth() + '/' + d.date.getDate() + ': ' + d.count });
+    var articleStart = data.articles[Math.round((data.articles.length) / 4)].date;
+    var articleEnd = data.articles[Math.round((data.articles.length) / 2)].date;
 
-    function getActive(article) { return article.active; };
+    var brush = d3.svg.brush().x(x)
+	.on('brush', brushmove)
+	.on('brushend', brushend)
+	.extent([articleStart, articleEnd]);
 
-    svg.selectAll('circle').data(data['articles']).enter()
-	.append('circle')
-	.attr('cx', function(d) {return x(getWeekStart(d.date, 3)); })
-	.attr('cy', function(d) {return yBottom(d.week_index) + margin/3; })
-	.attr('r', 6)
-	.classed('active', getActive)
-	.on('mouseover', function(d) {
-	    updateArticle(d);
-	    d3.selectAll('circle').classed('active', getActive);
-	});
+    svg.append('g')
+	.attr('class', 'brush')
+	.call(brush)
+	.selectAll('rect')
+	.attr('height', height);
+
+    svg.append('text')
+	.text('Related Articles')
+	.attr('transform', 'translate(0,' + (margin.top + 6 * height / BREAKS) + ')')
+	.style('font-weight', 'bold');
+
+
+    function inBound(d, s) {
+	return s[0] <= d.date && d.date <= s[1];
+    }
+
+    function brushmove() {
+	var s = d3.event.target.extent();
+
+	svg.selectAll('.articleLine').classed(
+	    'active', function(d) { return inBound(d, s); });
+
+	svg.selectAll('.signatureLine').classed(
+	    'active', function(d) { return inBound(d, s); });
+    }
+
+    articleDivs = articles
+	.selectAll('.article')
+	.data(data.articles)
+	.enter()
+	.append('a')
+	.attr('href', function(d) { return d.link; })
+	.append('div')
+	.attr('id', function(d,i) { return 'ar' + i;})
+	.classed('article', true)
+	.style('width', '300px')
+	.style('height', '0px');
+
+    articleDivs.append('h2')
+	.text(function(d) {return d.title; });
+
+    articleDivs.append('h3')
+	.text(function(d) { return dateFormatter(d.date); });
+
+    articleDivs.append('p')
+	.text(function(d) {return d.teaser; });
+
+
+    function brushend() {
+	svg.classed('selecting', !d3.event.target.empty());
+
+	if (d3.event.target.empty()) {
+	    return
+	};
+
+	var s = d3.event.target.extent();
+
+	articleDivs
+	    .transition()
+	    .style('height', function(d) {
+	    	return inBound(d, s) ? '250px' : '0px';
+	    });
+    }
+    
+    svg.call(brush.event);
 }
